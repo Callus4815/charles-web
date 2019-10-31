@@ -27,7 +27,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
 # DEBUG = True
 DEBUG = os.environ.get('DJANGO_DEBUG', '') != 'False'
 
-ALLOWED_HOSTS = ["site.com", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["uat-charles.herokuapp.com", "localhost", "127.0.0.1"]
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
