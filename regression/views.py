@@ -68,13 +68,12 @@ def upload(request):
                     NONAEM=request.FILES['NONAEM']
                 )
         else:
-            logging.warning("ITS NOT VALID")
+            logging.error("ITS NOT VALID")
         list_of_vars = request.POST['list_of_vars'] or None
         if list_of_vars:
 
             list_of_vars = list_of_vars.split(',')
             list_of_vars = [i.strip("\"") for i in list_of_vars]
-            raise RuntimeError(list_of_vars)
 
         activity = request.POST['activity']
         platform = request.POST['platform']
