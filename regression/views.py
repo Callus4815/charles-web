@@ -183,10 +183,14 @@ def create_parsed_dicts(file_obj, list_of_var=None):
     #         req.append(p['request'])
 
     for k in req:
-        if len(k['header']['firstLine']) > 100:
-            firstlines.append(k['header']['firstLine'])
-        elif len(k['body']['text']) > 100:
-            firstlines.append(k['body']['text'])
+        if k.get('header'):
+            request_string = k['header'].get('firstLine')
+            if len(request_string) > 100:
+                firstlines.append(k['header']['firstLine'])
+        elif k.get('body'):
+            request_string = k['body'].get('text')
+            if len(request_string) > 100:
+                firstlines.append(k['body']['text'])
 
     for l in firstlines:
         parsed_urls.append(prs.parse_qs(l))
