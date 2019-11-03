@@ -1,4 +1,5 @@
 from django.db import models
+from django_pandas.managers import DataFrameManager
 
 # Create your models here.
 
@@ -17,6 +18,7 @@ class Activity(models.Model):
     platform = models.ForeignKey(Platform_File, on_delete=models.CASCADE)
     AEM = models.FileField()
     NONAEM = models.FileField()
+    pdobjects = DataFrameManager()
 
     def __str__(self):
         return "%s - %s - %s" % (str(self.id), str(self.platform.platform), str(self.activity))

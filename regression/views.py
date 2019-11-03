@@ -242,7 +242,33 @@ def delete(request):
     return regression_upload(request)
 
 def preview_file(request):
-    pass
+    file_id = request.GET['file_id']
+    try:
+        qs = Platform_File.objects.get(id=file_id)
+        file1 = qs.platform_file
+    except:
+        qs = SingleFile.objects.get(id=file_id)
+        file1 = qs.single_file
+    # raise RuntimeError(file1.read())
+    xls = pd.ExcelFile(file1)
+    df = xls.parse()
+    # raise RuntimeError(df.columns)
+    df.index = df['Unnamed: 0']
+    del df['Unnamed: 0']
+    json = df.to_html()
+    columns = df.columns
+    template = "preview.html"
+
+
+
+
+    context = {
+        'data': json,
+        'columns': columns
+        }
+
+    return render(request, template, context)
+
 
 
 # LOCAL FUNCTIONS
