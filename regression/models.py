@@ -21,6 +21,14 @@ class Activity(models.Model):
     def __str__(self):
         return "%s - %s - %s" % (str(self.id), str(self.platform.platform), str(self.activity))
 
+class SingleFile(models.Model):
+    platform = models.CharField(max_length=100)
+    list_of_vars = models.TextField(blank=True, null=True)
+    environment = models.CharField(max_length=100)
+    single_file = models.FileField()
+    created = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return "%s | %s | %s | %s" % (str(self.id), str(self.list_of_vars), str(self.single_file))
 
 

@@ -9,6 +9,7 @@ import urllib.parse as prs
 from shutil import copyfile
 from operator import itemgetter
 import os
+import copy
 import logging
 import json
 import mimetypes
@@ -16,8 +17,8 @@ from openpyxl import load_workbook
 import pandas as pd
 import datetime
 
-from .forms import FileUploadForm
-from .models import Platform_File, Activity
+from .forms import FileUploadForm, SingleFileForm
+from .models import Platform_File, Activity, SingleFile
 # Create your views here.
 
 
@@ -137,12 +138,94 @@ def upload(request):
 
     return render(request, "regression-upload.html", {"excelfile": excelfile, "activity": activity, "platform": platform, "list_of_vars": list_of_vars, "form": form, "past_uploads": past_uploads})
 
+def get_single_uploads():
+    single_files = SingleFile.objects.all()
+    return single_files
+
+
+def single_file_upload(request):
+    form = SingleFileForm()
+    past_uploads = get_single_uploads()
+    context = {
+        "form": form,
+        "past_uploads": past_uploads
+    }
+    return render(request, "single-upload.html", context)
+
+def upload_single_file(request):
+    context = {}
+    form = SingleFileForm()
+    if request.method == "POST":
+        incoming_req = request.POST
+        form  = SingleFileForm(request.POST)
+        single_upload = SingleFile(
+                    platform = incoming_req['platform'],
+                    environment = incoming_req['environment'],
+                    list_of_vars= incoming_req['list_of_vars'],
+                )
+        to_convert_file = request.FILES['upload_file']
+        list_of_vars = incoming_req['list_of_vars'] or None
+        if list_of_vars:
+            list_of_vars = list_of_vars.split(',')
+            list_of_vars = [i.strip("\"") for i in list_of_vars]
+
+        parsed = create_parsed_dicts(to_convert_file, list_of_var=list_of_vars)
+
+        final = []
+        diffkeys = []
+        keys = []
+        for i in parsed:
+            for k,v in copy.deepcopy(i['p']).items():
+                if k.startswith('get '):
+                    del i['p'][k]
+
+        for i in parsed:
+            diffmaker = [diffkeys.append(k) for k in i['p'].keys() if k not in diffkeys]
+
+        for i in parsed:
+            for k in diffkeys:
+                if not i['p'].get(k):
+                    i['p'].setdefault(k, "not present")
+
+            final.append(i['p'])
+            keys.append(''.join(i['call']))
+
+        if list_of_vars:
+            keys = list_of_vars
+
+
+        df = pd.DataFrame.from_records(data=final, index=keys)
+        df = df.transpose()
+        excelfile = convert_to_excel(df, incoming_req['environment'] + '.xlsx', sheet_name=incoming_req['platform'])
+        single_upload.single_file = excelfile['file_name']
+        single_upload.save()
+
+        past_uploads = get_single_uploads()
+
+
+        context = {
+            "excelfile": excelfile,
+            "past_uploads": past_uploads,
+            "form": form
+
+        }
+
+    return render(request, "single-upload.html", context)
+
+
 def download_file(request):
     file_path = request.GET['file_path']
     file_id = request.GET['file_id']
-    file1 = Platform_File.objects.get(id=file_id)
+
+    try:
+        file1 = Platform_File.objects.get(id=file_id)
+        bit_file = file1.platform_file
+    except:
+        file1 = SingleFile.objects.get(id=file_id)
+        bit_file = file1.single_file
+
     if file1:
-        response = HttpResponse(file1.platform_file, content_type='application/vnd.ms-excel')
+        response = HttpResponse(bit_file, content_type='application/vnd.ms-excel')
         response['Content-Disposition'] = 'inline; filename=' + os.path.basename(file_path)
         return response
     raise Http404
@@ -150,10 +233,16 @@ def download_file(request):
 def delete(request):
     file_path = request.GET['file_path']
     file_id = request.GET['file_id']
-    to_delete = Platform_File.objects.get(id=file_id)
+    try:
+        to_delete = Platform_File.objects.get(id=file_id)
+    except:
+        to_delete = SingleFile.objects.get(id=file_id)
     to_delete.delete()
     delete_local(file_path)
     return regression_upload(request)
+
+def preview_file(request):
+    pass
 
 
 # LOCAL FUNCTIONS
