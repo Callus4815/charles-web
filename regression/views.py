@@ -299,11 +299,11 @@ def create_parsed_dicts(file_obj, list_of_var=None):
 
     for k in req:
         if k.get('header'):
-            request_string = k['header'].get('firstLine')
+            request_string = k['header'].get('firstLine',{})
             if len(request_string) > 100:
                 firstlines.append(k['header']['firstLine'])
-        elif k.get('body'):
-            request_string = k['body'].get('text')
+        if k.get('body'):
+            request_string = k['body'].get('text', {})
             if len(request_string) > 100:
                 firstlines.append(k['body']['text'])
 
