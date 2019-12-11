@@ -1,5 +1,9 @@
 {% extends "base.html" %}
-
+{% block error_content %}
+{% if error %}
+{{ error }}
+{% endif %}
+{% endblock %}
 {% block page_content %}
 <div class="container-fluid flex-fill">
     <div class="row">
@@ -8,45 +12,50 @@
             <h1 class="mb-5 mt-5 text-center">UAT Variable Check Charles Logs</h1>
             <div class="row">
                 <div class="col"></div>
-                    <div class="mb-5 col-6">
-                        <form action="single_upload" method="post" enctype="multipart/form-data">
-                            {% csrf_token %}
-                            <div class="form-group">
-                                {{ form.platform }}
-                            </div>
-                            <div class="form-group">
-                                    {{ form.list_of_vars }}
-                            </div>
-                            <div class="form-group">
-                                {{ form.environment}}
-                            </div>
-                            <div class="form-group">
-                                {{ form.upload_file}}
-                            </div>
-                            <button style="float:left;" type="submit" class="btn btn-primary">Submit</button>
-                        </form>
-                        <form style="float: right;" action="single" method="get">
+                <div class="mb-5 col-6">
+                    <form action="single_upload" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            {{ form.platform }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.list_of_vars }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.environment}}
+                        </div>
+                        <div class="form-group">
+                            {{ form.upload_file}}
+                        </div>
+                        <button style="float:right;" type="submit" class="btn btn-primary">Submit</button>
+                    </form>
+                    <form action="single" method="get">
                         <button class="btn btn-warning">New Platform</button>
-                        </form>
-                    </div>
+                    </form>
+                </div>
                 <div class="col"></div>
             </div>
             <div class="row">
-            <div class="col"></div>
-            <div class="col-9">
-                {% if past_uploads %}
-                <ul class="list-group">
-                    {% for up in past_uploads %}
+                <div class="col"></div>
+                <div class="col-9">
+                    {% if past_uploads %}
+                    <ul class="list-group">
+                        {% for up in past_uploads %}
                         <li class="list-group-item">{{up.environment}} - {{ up.platform }} - {{ up.created }}
-                        <div style="float: right;"><a href="delete?file_id={{up.id}}&file_path={{up.single_file}}"><button class="btn btn-danger btn-sm ml-2">Delete</button></a></div>
-                        <div style="float: right;"><a href="download_file?file_id={{up.id}}&file_path={{up.single_file}}"><button class="btn btn-success btn-sm ml-2">Download</button></a></div>
-                        <div style="float: right;"><a href="preview_file?file_id={{up.id}}"><button class="btn btn-info btn-sm ml-2">Preview</button></a></div>
+                            <div style="float: right;"><a
+                                    href="delete?file_id={{up.id}}&file_path={{up.single_file}}&page={{request.path}}"><button
+                                        class="btn btn-danger btn-sm ml-2">Delete</button></a></div>
+                            <div style="float: right;"><a
+                                    href="download_file?file_id={{up.id}}&file_path={{up.single_file}}"><button
+                                        class="btn btn-success btn-sm ml-2">Download</button></a></div>
+                            <div style="float: right;"><a href="preview_file?file_id={{up.id}}"><button
+                                        class="btn btn-info btn-sm ml-2">Preview</button></a></div>
                         </li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </div>
-            <div class="col"></div>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+                <div class="col"></div>
             </div>
         </div>
         <div class="col"></div>

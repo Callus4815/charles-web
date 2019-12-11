@@ -1,5 +1,5 @@
 from django.http import HttpResponseRedirect, HttpResponse, Http404
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.generic.edit import FormView
 from django.conf import settings
 from django.utils import timezone
@@ -22,14 +22,23 @@ from .models import Platform_File, Activity, SingleFile
 # Create your views here.
 
 
+class UploadError(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return(repr(self.value))
+
+
 def regression_upload(request):
     form = FileUploadForm()
     past_uploads = get_uploads()
     context = {
         "form": form,
         "past_uploads": past_uploads
-        }
+    }
     return render(request, 'regression-upload.html', context)
+
 
 def get_uploads():
     activities = []
@@ -42,6 +51,7 @@ def get_uploads():
     }
     return context
 
+
 def upload(request):
     form = FileUploadForm()
     excelfile = None
@@ -49,12 +59,15 @@ def upload(request):
     upload = None
     platform = None
     list_of_vars = None
+
     past_uploads = get_uploads()
+
     if request.method == "POST":
         existing_activity_model = None
         form = FileUploadForm(request.POST)
         if form:
-            existing_activity_model = Activity.objects.filter(activity=request.POST['activity'])
+            existing_activity_model = Activity.objects.filter(
+                activity=request.POST['activity'])
             if len(existing_activity_model) > 0:
                 for i in existing_activity_model:
                     if i.platform.platform == request.POST['platform']:
@@ -80,18 +93,24 @@ def upload(request):
         platform = request.POST['platform']
 
         final = []
+        try:
+            parsed_AEM = create_parsed_dicts(
+                upload.AEM, list_of_var=list_of_vars)
+            parsed_NON_AEM = create_parsed_dicts(
+                upload.NONAEM, list_of_var=list_of_vars)
+        except UploadError as exc:
+            raise RuntimeError()
+            return render(request, request.path_info, {'error': exc})
 
-        parsed_AEM = create_parsed_dicts(upload.AEM, list_of_var=list_of_vars)
-        parsed_NON_AEM = create_parsed_dicts(upload.NONAEM, list_of_var=list_of_vars)
-
-        diffkeys = [k for k in parsed_NON_AEM[0]['p'].keys() if k not in parsed_AEM[0]['p'].keys()]
+        diffkeys = [k for k in parsed_NON_AEM[0]
+                    ['p'].keys() if k not in parsed_AEM[0]['p'].keys()]
 
         for k in diffkeys:
             parsed_AEM[0]['p'].setdefault(k, "not present")
 
         keys = []
-        for k,v in parsed_NON_AEM[0]['p'].items():
-            for k2,v2 in parsed_AEM[0]['p'].items():
+        for k, v in parsed_NON_AEM[0]['p'].items():
+            for k2, v2 in parsed_AEM[0]['p'].items():
                 if k == k2:
                     dic = {"NON": v, "AEM":  v2}
                     if list_of_vars:
@@ -109,7 +128,8 @@ def upload(request):
         if not keys:
             keys = list_of_vars
         df = pd.DataFrame.from_records(data=final, index=keys)
-        excelfile = convert_to_excel(df, platform + '.xlsx', sheet_name=activity)
+        excelfile = convert_to_excel(
+            df, platform + '.xlsx', sheet_name=activity)
 
         platform_model = Platform_File.objects.filter(platform=platform)
         existing_platform_model = None
@@ -138,6 +158,7 @@ def upload(request):
 
     return render(request, "regression-upload.html", {"excelfile": excelfile, "activity": activity, "platform": platform, "list_of_vars": list_of_vars, "form": form, "past_uploads": past_uploads})
 
+
 def get_single_uploads():
     single_files = SingleFile.objects.all()
     return single_files
@@ -152,35 +173,38 @@ def single_file_upload(request):
     }
     return render(request, "single-upload.html", context)
 
+
 def upload_single_file(request):
     context = {}
     form = SingleFileForm()
     if request.method == "POST":
         incoming_req = request.POST
-        form  = SingleFileForm(request.POST)
+        form = SingleFileForm(request.POST)
         single_upload = SingleFile(
-                    platform = incoming_req['platform'],
-                    environment = incoming_req['environment'],
-                    list_of_vars= incoming_req['list_of_vars'],
-                )
+            platform=incoming_req['platform'],
+            environment=incoming_req['environment'],
+            list_of_vars=incoming_req['list_of_vars'],
+        )
         to_convert_file = request.FILES['upload_file']
         list_of_vars = incoming_req['list_of_vars'] or None
         if list_of_vars:
             list_of_vars = list_of_vars.split(',')
             list_of_vars = [i.strip("\"") for i in list_of_vars]
 
-        parsed = create_parsed_dicts(to_convert_file, list_of_var=list_of_vars)
+        parsed = create_parsed_dicts(
+            to_convert_file, list_of_var=list_of_vars)
 
         final = []
         diffkeys = []
         keys = []
         for i in parsed:
-            for k,v in copy.deepcopy(i['p']).items():
+            for k, v in copy.deepcopy(i['p']).items():
                 if k.startswith('get '):
                     del i['p'][k]
 
         for i in parsed:
-            diffmaker = [diffkeys.append(k) for k in i['p'].keys() if k not in diffkeys]
+            diffmaker = [diffkeys.append(k)
+                         for k in i['p'].keys() if k not in diffkeys]
 
         for i in parsed:
             for k in diffkeys:
@@ -193,15 +217,14 @@ def upload_single_file(request):
         if list_of_vars:
             keys = list_of_vars
 
-
         df = pd.DataFrame.from_records(data=final, index=keys)
         df = df.transpose()
-        excelfile = convert_to_excel(df, incoming_req['environment'] + '.xlsx', sheet_name=incoming_req['platform'])
+        excelfile = convert_to_excel(
+            df, incoming_req['environment'] + '.xlsx', sheet_name=incoming_req['platform'])
         single_upload.single_file = excelfile['file_name']
         single_upload.save()
 
         past_uploads = get_single_uploads()
-
 
         context = {
             "excelfile": excelfile,
@@ -225,21 +248,27 @@ def download_file(request):
         bit_file = file1.single_file
 
     if file1:
-        response = HttpResponse(bit_file, content_type='application/vnd.ms-excel')
-        response['Content-Disposition'] = 'inline; filename=' + os.path.basename(file_path)
+        response = HttpResponse(
+            bit_file, content_type='application/vnd.ms-excel')
+        response['Content-Disposition'] = 'inline; filename=' + \
+            os.path.basename(file_path)
         return response
     raise Http404
+
 
 def delete(request):
     file_path = request.GET['file_path']
     file_id = request.GET['file_id']
+    page = request.GET['page']
     try:
         to_delete = Platform_File.objects.get(id=file_id)
     except:
         to_delete = SingleFile.objects.get(id=file_id)
     to_delete.delete()
     delete_local(file_path)
-    return regression_upload(request)
+
+    return redirect(page)
+
 
 def preview_file(request):
     file_id = request.GET['file_id']
@@ -259,22 +288,22 @@ def preview_file(request):
     columns = df.columns
     template = "preview.html"
 
-
-
-
     context = {
         'data': json,
         'columns': columns
-        }
+    }
 
     return render(request, template, context)
 
 
-
 # LOCAL FUNCTIONS
 def delete_local(file_path):
-    os.remove(file_path)
+    try:
+        os.remove(file_path)
+    except:
+        return
     return
+
 
 def create_parsed_dicts(file_obj, list_of_var=None):
     """Parse file and create list of dictionaries of url parameters, if key 'pageName' is present"""
@@ -299,7 +328,7 @@ def create_parsed_dicts(file_obj, list_of_var=None):
 
     for k in req:
         if k.get('header'):
-            request_string = k['header'].get('firstLine',{})
+            request_string = k['header'].get('firstLine', {})
             if len(request_string) > 100:
                 firstlines.append(k['header']['firstLine'])
         if k.get('body'):
@@ -311,22 +340,26 @@ def create_parsed_dicts(file_obj, list_of_var=None):
         parsed_urls.append(prs.parse_qs(l))
 
     for m in parsed_urls:
-        for k,v in m.items():
+        for k, v in m.items():
             m[k] = "".join(v)
 
     for p in parsed_urls:
-        p = {k.lower(): v for k,v in p.items()}
+        p = {k.lower(): v for k, v in p.items()}
         specified = {}
-        index = [ky for ky,va in p.items() if ky.startswith('get ')]
+        index = [ky for ky, va in p.items() if ky.startswith(
+            ('get ', 'POST ', 'GET '))]
         if len(index) > 0 and len(lower_list_of_keys) > 0:
             for k in lower_list_of_keys:
                 specified.update({k: p.get(k, p.get(k, "Not Present"))})
-            specified_key_list_of_dicts.append({"call": index[0], "p": specified})
+            specified_key_list_of_dicts.append(
+                {"call": index[0], "p": specified})
         else:
             # print(p)
             specified_key_list_of_dicts.append({"call": index, "p": p})
     # print(specified_key_list_of_dicts)
+
     return specified_key_list_of_dicts
+
 
 def convert_to_dataframe(parsed_dicts, list_of_keys):
     """Converts list of dictionaires to pandas Dataframe"""
@@ -340,20 +373,13 @@ def convert_to_dataframe(parsed_dicts, list_of_keys):
                 else:
                     yield str(k), v
 
-    # columns = []
-    # indices = [v.keys() for k,v in parsed_dicts[0].items()]
-    # print(type(indices))
-    # for i in parsed_dicts:
-    #     column = [ky for ky, va in i.items() if ky.startswith('get')]
-    #     columns.append(column[0])
-
-    # print(indices)
-    df = pd.DataFrame({k:v for k, v in flatten(kv)} for kv in parsed_dicts)
+    df = pd.DataFrame({k: v for k, v in flatten(kv)} for kv in parsed_dicts)
     df.index = df['call']
     df.index.names = [None]
     del df['call']
     result = df.transpose()
     return result
+
 
 def convert_to_excel(df, file_name, sheet_name=None):
     """Converts Pandas DataFrame to Excel readable format"""
@@ -368,7 +394,8 @@ def convert_to_excel(df, file_name, sheet_name=None):
         writer.close()
     except:
         df.to_excel(file_name, sheet_name=sheet_name)
-    return {"ok":True, "file_name": file_name, "sheet": sheet_name}
+    return {"ok": True, "file_name": file_name, "sheet": sheet_name}
+
 
 def convert_from_chls_to_txt(file_name):
     head, sep, tail = file_name.partition('.')
