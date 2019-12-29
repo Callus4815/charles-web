@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 
+{% block error_content %}
+{% if error %}
+<div class="alert alert-danger alert-dismissable fade show text-center">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <strong>Error! {{ error }}</strong>
+    <div><strong>There was an error with these files:</strong><br />
+        <span>{{ files_attempted.AEM }}</span><br />
+        <span>{{ files_attempted.NONAEM }}</span>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
 
 {% block page_content %}
 <div class="container-fluid flex-fill">

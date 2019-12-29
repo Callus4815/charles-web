@@ -23,11 +23,7 @@ from .models import Platform_File, Activity, SingleFile
 
 
 class UploadError(Exception):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return(repr(self.value))
+    pass
 
 
 def regression_upload(request):
@@ -35,7 +31,7 @@ def regression_upload(request):
     past_uploads = get_uploads()
     context = {
         "form": form,
-        "past_uploads": past_uploads
+        "past_uploads": past_uploads,
     }
     return render(request, 'regression-upload.html', context)
 
@@ -99,8 +95,12 @@ def upload(request):
             parsed_NON_AEM = create_parsed_dicts(
                 upload.NONAEM, list_of_var=list_of_vars)
         except UploadError as exc:
-            raise RuntimeError()
-            return render(request, request.path_info, {'error': exc})
+            context = {
+                "form": form,
+                "error": UploadError(exc),
+                "files_attempted": request.FILES
+            }
+            return render(request, "regression-upload.html", context)
 
         diffkeys = [k for k in parsed_NON_AEM[0]
                     ['p'].keys() if k not in parsed_AEM[0]['p'].keys()]
@@ -190,9 +190,16 @@ def upload_single_file(request):
         if list_of_vars:
             list_of_vars = list_of_vars.split(',')
             list_of_vars = [i.strip("\"") for i in list_of_vars]
-
-        parsed = create_parsed_dicts(
-            to_convert_file, list_of_var=list_of_vars)
+        try:
+            parsed = create_parsed_dicts(
+                to_convert_file, list_of_var=list_of_vars)
+        except UploadError as exc:
+            context = {
+                "form": form,
+                "error": UploadError(exc),
+                "files_attempted": request.FILES
+            }
+            return render(request, "single-upload.html", context)
 
         final = []
         diffkeys = []
@@ -257,7 +264,8 @@ def download_file(request):
 
 
 def delete(request):
-    file_path = request.GET['file_path']
+    file_path = prs.urlparse(request.GET['file_path'])
+    # raise RuntimeError(file_path)
     file_id = request.GET['file_id']
     page = request.GET['page']
     try:
@@ -298,6 +306,7 @@ def preview_file(request):
 
 # LOCAL FUNCTIONS
 def delete_local(file_path):
+    # raise RuntimeError(file_path)
     try:
         os.remove(file_path)
     except:
@@ -316,25 +325,42 @@ def create_parsed_dicts(file_obj, list_of_var=None):
     else:
         lower_list_of_keys = []
     specified_key_list_of_dicts = []
-
-    data = json.load(file_obj.file)
-    for p in data:
-        req.append(p['request'])
+    try:
+        data = json.load(file_obj.file)
+        for p in data:
+            req.append(p['request'])
+    except Exception:
+        raise UploadError("Please be sure you are uploading a JSON file")
 
     # with open(file_obj, 'rb') as json_file:
     #     data = json.load(json_file)
     #     for p in data:
     #         req.append(p['request'])
+    column_headers = []
 
     for k in req:
-        if k.get('header'):
-            request_string = k['header'].get('firstLine', {})
-            if len(request_string) > 100:
-                firstlines.append(k['header']['firstLine'])
-        if k.get('body'):
-            request_string = k['body'].get('text', {})
-            if len(request_string) > 100:
-                firstlines.append(k['body']['text'])
+        try:
+            if k.get('header'):
+                request_string = k['header'].get('firstLine', {})
+                if len(request_string) > 100:
+                    firstlines.append(k['header']['firstLine'])
+
+            if k.get('body'):
+                request_string = k['body'].get('text', {})
+                if len(request_string) > 100:
+                    try:
+                        post_call = k['header'].get('firstLine')
+                        post_call = post_call.rstrip(" HTTP/1.1")
+                    except:
+                        post_call = 'Unavailable'
+                    k['body']['text'] = 'charles_log_ref=' + \
+                        post_call+'&' + \
+                        k['body']['text']
+
+                    firstlines.append(k['body']['text'])
+        except:
+            raise RuntimeError(
+                'Please examine CHLSJ file and locate url parameters')
 
     for l in firstlines:
         parsed_urls.append(prs.parse_qs(l))
