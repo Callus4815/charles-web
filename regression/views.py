@@ -359,7 +359,7 @@ def create_parsed_dicts(file_obj, list_of_var=None):
 
                     firstlines.append(k['body']['text'])
         except:
-            raise RuntimeError(
+            raise UploadError(
                 'Please examine CHLSJ file and locate url parameters')
 
     for l in firstlines:
