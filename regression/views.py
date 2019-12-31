@@ -21,6 +21,8 @@ from .forms import FileUploadForm, SingleFileForm
 from .models import Platform_File, Activity, SingleFile
 # Create your views here.
 
+timezone.activate(settings.TIME_ZONE)
+
 
 class UploadError(Exception):
     pass
@@ -237,7 +239,12 @@ def upload_single_file(request):
             "excelfile": excelfile,
             "past_uploads": past_uploads,
             "form": form
+        }
+    else:
 
+        context = {
+            "form": form,
+            "past_uploads": get_single_uploads()
         }
 
     return render(request, "single-upload.html", context)
@@ -265,15 +272,16 @@ def download_file(request):
 
 def delete(request):
     file_path = prs.urlparse(request.GET['file_path'])
-    # raise RuntimeError(file_path)
+    # raise RuntimeError(file_path.path)
     file_id = request.GET['file_id']
     page = request.GET['page']
+    # raise RuntimeError(page)
     try:
         to_delete = Platform_File.objects.get(id=file_id)
     except:
         to_delete = SingleFile.objects.get(id=file_id)
     to_delete.delete()
-    delete_local(file_path)
+    delete_local(file_path.path)
 
     return redirect(page)
 
