@@ -48,7 +48,8 @@
                     {% if past_uploads %}
                     <ul class="list-group">
                         {% for up in past_uploads %}
-                        <li class="list-group-item">{{up.environment}} - {{ up.platform }} - {{ up.created }}
+                        <li class="list-group-item">{{up.environment}} - {{ up.platform }} -
+                            {{ up.created }}
                             <div style="float: right;"><a
                                     href="delete?file_id={{up.id}}&file_path={{up.single_file}}&page={{request.path}}"><button
                                         class="btn btn-danger btn-sm ml-2">Delete</button></a></div>

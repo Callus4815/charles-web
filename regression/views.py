@@ -224,7 +224,7 @@ def upload_single_file(request):
             keys.append(''.join(i['call']))
 
         if list_of_vars:
-            keys = list_of_vars
+            keys = None
 
         df = pd.DataFrame.from_records(data=final, index=keys)
         df = df.transpose()
@@ -380,15 +380,18 @@ def create_parsed_dicts(file_obj, list_of_var=None):
     for p in parsed_urls:
         p = {k.lower(): v for k, v in p.items()}
         specified = {}
-        index = [ky for ky, va in p.items() if ky.startswith(
-            ('get ', 'POST ', 'GET '))]
+        if 'charles_log_ref' in p:
+            index = [va for ky, va in p.items() if va.startswith(
+                ('get ', 'POST ', 'GET '))]
+        else:
+            index = [ky for ky, va in p.items() if ky.startswith(
+                ('get ', 'POST ', 'GET '))]
         if len(index) > 0 and len(lower_list_of_keys) > 0:
             for k in lower_list_of_keys:
                 specified.update({k: p.get(k, p.get(k, "Not Present"))})
             specified_key_list_of_dicts.append(
                 {"call": index[0], "p": specified})
         else:
-            # print(p)
             specified_key_list_of_dicts.append({"call": index, "p": p})
     # print(specified_key_list_of_dicts)
 
