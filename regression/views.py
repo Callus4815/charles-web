@@ -83,9 +83,8 @@ def upload(request):
             logging.error("ITS NOT VALID")
         list_of_vars = request.POST['list_of_vars'] or None
         if list_of_vars:
-
             list_of_vars = list_of_vars.split(',')
-            list_of_vars = [i.strip("\"") for i in list_of_vars]
+            list_of_vars = [i.strip() for i in list_of_vars]
 
         activity = request.POST['activity']
         platform = request.POST['platform']
@@ -191,7 +190,7 @@ def upload_single_file(request):
         list_of_vars = incoming_req['list_of_vars'] or None
         if list_of_vars:
             list_of_vars = list_of_vars.split(',')
-            list_of_vars = [i.strip("\"") for i in list_of_vars]
+            list_of_vars = [i.strip() for i in list_of_vars]
         try:
             parsed = create_parsed_dicts(
                 to_convert_file, list_of_var=list_of_vars)
@@ -210,7 +209,7 @@ def upload_single_file(request):
             for k, v in copy.deepcopy(i['p']).items():
                 if k.startswith('get '):
                     del i['p'][k]
-
+        print(parsed[0])
         for i in parsed:
             diffmaker = [diffkeys.append(k)
                          for k in i['p'].keys() if k not in diffkeys]
@@ -225,7 +224,7 @@ def upload_single_file(request):
 
         if list_of_vars:
             keys = None
-
+        # print(final)
         df = pd.DataFrame.from_records(data=final, index=keys)
         df = df.transpose()
         excelfile = convert_to_excel(
