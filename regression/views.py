@@ -222,9 +222,6 @@ def upload_single_file(request):
             final.append(i['p'])
             keys.append(''.join(i['call']))
 
-        if list_of_vars:
-            keys = None
-        # print(final)
         df = pd.DataFrame.from_records(data=final, index=keys)
         df = df.transpose()
         excelfile = convert_to_excel(
