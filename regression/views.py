@@ -333,7 +333,8 @@ def create_parsed_dicts(file_obj, list_of_var=None):
         data = json.load(file_obj.file)
         for p in data:
             req.append(p['request'])
-    except Exception:
+    except Exception as exc:
+        print("There was an upload Error: %s" % exc)
         raise UploadError("Please be sure you are uploading a JSON file")
 
     # with open(file_obj, 'rb') as json_file:
