@@ -23,6 +23,8 @@ from .models import Platform_File, Activity, SingleFile
 
 timezone.activate(settings.TIME_ZONE)
 
+EXCEL_DIR = 'uploaded'
+
 
 class UploadError(Exception):
     pass
@@ -139,11 +141,12 @@ def upload(request):
         else:
             platform_model = Platform_File(
                 platform=platform,
-                platform_file=excelfile['file_name'],
+                platform_file=os.path.join(EXCEL_DIR, excelfile['file_name']),
                 created=timezone.now()
             )
         if existing_platform_model:
-            existing_platform_model.platform_file = excelfile['file_name']
+            existing_platform_model.platform_file = os.path.join(
+                EXCEL_DIR, excelfile['file_name'])
             existing_platform_model.created = timezone.now()
             existing_platform_model.save()
             upload.platform = existing_platform_model
@@ -226,7 +229,8 @@ def upload_single_file(request):
         df = df.transpose()
         excelfile = convert_to_excel(
             df, incoming_req['environment'] + '.xlsx', sheet_name=incoming_req['platform'])
-        single_upload.single_file = excelfile['file_name']
+        single_upload.single_file = os.path.join(
+            EXCEL_DIR, excelfile['file_name'])
         single_upload.save()
 
         past_uploads = get_single_uploads()
@@ -310,9 +314,9 @@ def preview_file(request):
 
 # LOCAL FUNCTIONS
 def delete_local(file_path):
-    # raise RuntimeError(file_path)
+    path = os.path.join(settings.BASE_DIR, file_path)
     try:
-        os.remove(file_path)
+        os.remove(path)
     except:
         return
     return
@@ -418,16 +422,19 @@ def convert_to_dataframe(parsed_dicts, list_of_keys):
 def convert_to_excel(df, file_name, sheet_name=None):
     """Converts Pandas DataFrame to Excel readable format"""
 
+    if not os.path.exists(EXCEL_DIR):
+        os.makedirs(EXCEL_DIR)
     try:
-        book = load_workbook(file_name)
-        writer = pd.ExcelWriter(file_name, engine='openpyxl')
+        book = load_workbook(os.path.join(EXCEL_DIR, file_name))
+        writer = pd.ExcelWriter(os.path.join(
+            EXCEL_DIR, file_name), engine='openpyxl')
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
         df.to_excel(writer, sheet_name=sheet_name)
         writer.save()
         writer.close()
-    except:
-        df.to_excel(file_name, sheet_name=sheet_name)
+    except Exception as exc:
+        df.to_excel(os.path.join(EXCEL_DIR, file_name), sheet_name=sheet_name)
     return {"ok": True, "file_name": file_name, "sheet": sheet_name}
 
 
