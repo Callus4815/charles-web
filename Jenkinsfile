@@ -13,5 +13,12 @@ pipeline {
       }
     }
 
+    stage('') {
+      steps {
+        sh '''git push heroku master
+'''
+      }
+    }
+
   }
 }
